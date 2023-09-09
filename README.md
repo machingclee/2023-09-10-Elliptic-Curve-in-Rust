@@ -1,6 +1,6 @@
 # 2023-09-10-Elliptic-Curve-in-Rust
-- Study elliptic curve by coding
-- Practice operator overloading by creating my own struct over Z/pZ.
+- Study elliptic curve by coding.
+- Practice operator overloading by creating my own struct over $\mathbb Z/p\mathbb Z$.
 - **Main Takeaway.** 
   - Learned how to define the interface for the operator to overload. 
   - For example, I was trapped by the mindset of computing everything through reference (no copy, no move), but then I cannot return computational result since every value has a reference to a local variable inside a function! 
