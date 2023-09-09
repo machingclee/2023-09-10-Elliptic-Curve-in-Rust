@@ -51,7 +51,7 @@ impl<'a> EllipticCurve<'a> {
             (Point::Identity, _) => k.to_owned(),
             (_, Point::Identity) => h.to_owned(),
             (Point::Coor(x1p, y1p), Point::Coor(x2p, y2p)) => {
-                if x1p == x2p && (&y1p.value + &y2p.value) == BigUint::from(0u32) {
+                if x1p == x2p && (y1p.clone() + y2p).value == BigUint::from(0u32) {
                     return Point::Identity;
                 }
                 // s = (y2-y1)/(x2-x1)
@@ -232,5 +232,55 @@ mod test {
         let double = ec.double(&p);
         let p_on_curve = ec.is_on_curve(&double);
         assert!(p_on_curve);
+    }
+
+    #[test]
+    fn test_secp256k1() {
+        let p = BigUint::parse_bytes(
+            b"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F",
+            16,
+        )
+        .expect("Parsing fail for p");
+
+        let a = BigUint::parse_bytes(
+            b"0000000000000000000000000000000000000000000000000000000000000000",
+            16,
+        )
+        .expect("Parsing fail for a");
+
+        let b = BigUint::parse_bytes(
+            b"0000000000000000000000000000000000000000000000000000000000000007",
+            16,
+        )
+        .expect("Parsing fail for b");
+
+        let n = BigUint::parse_bytes(
+            b"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
+            16,
+        )
+        .expect("Parsing fail for n");
+
+        let x = BigUint::parse_bytes(
+            b"79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798",
+            16,
+        )
+        .expect("Parsing fail for x");
+
+        let y = BigUint::parse_bytes(
+            b"483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8",
+            16,
+        )
+        .expect("Parsing fail for y");
+
+        let point = Point::Coor(F_p { value: x, p: &p }, F_p { value: y, p: &p });
+
+        let ec = EllipticCurve {
+            a: F_p { value: a, p: &p },
+            b: F_p { value: b, p: &p },
+        };
+
+        let result = ec.scalar_mul(&point, &n);
+
+        assert_eq!(Point::Identity, result);
     }
 }
