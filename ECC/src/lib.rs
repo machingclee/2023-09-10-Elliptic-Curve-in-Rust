@@ -22,6 +22,9 @@ impl<'a> EllipticCurve<'a> {
         match h {
             Point::Identity => Point::Identity,
             Point::Coor(xp, yp) => {
+                if yp.value == BigUint::from(0u32) {
+                    return Point::Identity;
+                }
                 let two_times_yp = yp.clone() * BigUint::from(2u32);
                 let s = xp.clone() * xp;
                 let s = s * BigUint::from(3u32);
@@ -222,6 +225,19 @@ mod test {
 
     #[test]
     fn test_double() {
+        let p = BigUint::from(17u32);
+        let ec = EllipticCurve {
+            a: F_p::new(2, &p),
+            b: F_p::new(2, &p),
+        };
+
+        let p = Point::Coor(F_p::new(6, &p), F_p::new(3, &p));
+        let double = ec.double(&p);
+        let p_on_curve = ec.is_on_curve(&double);
+        assert!(p_on_curve);
+    }
+
+    fn test_y_equal_zero() {
         let p = BigUint::from(17u32);
         let ec = EllipticCurve {
             a: F_p::new(2, &p),
