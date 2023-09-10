@@ -1,5 +1,5 @@
 # 2023-09-10-Elliptic-Curve-in-Rust
-- Study elliptic curve by coding by following the [tutorial](https://www.udemy.com/course/elliptic-curve-cryptography-in-rust/)
+- Study elliptic curve via coding by following the [tutorial](https://www.udemy.com/course/elliptic-curve-cryptography-in-rust/)
 - **My difference from the tutorial.**
   - In tutorial, all computations are over `BigUint`, all points are `Point::Coor(BigUint, BigUint)`.
   - In my code, I simplify computations by designing my own struct, my points are `Point::Coor(F_p, F_p)`.
