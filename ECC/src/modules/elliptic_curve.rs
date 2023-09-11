@@ -11,7 +11,7 @@ pub enum Point<'a> {
     Coor(Field<'a>, Field<'a>),
     Identity,
 }
-
+#[derive(PartialEq, Clone, Debug)]
 pub struct EllipticCurve<'a> {
     pub a: Field<'a>,
     pub b: Field<'a>,
@@ -171,6 +171,8 @@ impl<'a> Div<&Field<'a>> for &Field<'a> {
 
 #[cfg(test)]
 mod test {
+    use crate::modules::curves::{Curve, CurveConfig};
+
     use super::*;
     #[test]
     fn test_ec_point_addition() {
@@ -261,14 +263,14 @@ mod test {
 
         let y = BigUint::parse_bytes(b"483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8", 16).expect("Parsing fail for y");
 
-        let point = Point::Coor(Field { value: x, p: &p }, Field { value: y, p: &p });
+        let generator = Point::Coor(Field { value: x, p: &p }, Field { value: y, p: &p });
 
         let ec = EllipticCurve {
             a: Field { value: a, p: &p },
             b: Field { value: b, p: &p },
         };
 
-        let result = ec.scalar_mul(&point, &n);
+        let result = ec.scalar_mul(&generator, &n);
 
         assert_eq!(Point::Identity, result);
     }

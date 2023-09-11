@@ -9,10 +9,11 @@ use num_bigint::{BigUint, RandBigInt};
 use rand::{self, Rng};
 use sha256::{digest, try_digest};
 
-struct ECDSA<'a> {
-    elliptic_curve: EllipticCurve<'a>,
-    generator: Point<'a>,
-    order: BigUint,
+#[derive(PartialEq, Clone, Debug)]
+pub struct ECDSA<'a> {
+    pub elliptic_curve: EllipticCurve<'a>,
+    pub generator: Point<'a>,
+    pub order: BigUint,
 }
 
 impl<'a> ECDSA<'a> {
@@ -93,6 +94,8 @@ impl<'a> ECDSA<'a> {
 
 #[cfg(test)]
 mod test {
+    use crate::modules::curves::{Curve, CurveConfig};
+
     use super::*;
     #[test]
     fn test_sign_verify() {
@@ -150,6 +153,40 @@ mod test {
         let hash_ = ecdsa.generate_hash_less_than(message, &ecdsa.order);
         let hash = BigUint::from(hash_);
         let signature = ecdsa.sign(&hash, &priv_key, &k_random);
+        let (R, S) = signature;
+        let R = R + BigUint::from(1u32);
+        let R = Futil::power(&R, 1, &ecdsa.order);
+
+        let tempered_signature = (R, S);
+        let verify_result = ecdsa.verify(&hash, &pub_key, &tempered_signature);
+        assert!(!verify_result);
+    }
+
+    #[test]
+    fn test_secp256_sign_verify_tempered<'a>() {
+        let CurveConfig { a, b, generator, order, p } = Curve::get_Secp256k1_config();
+        let (x, y) = generator;
+        let generator = Point::Coor(Field { value: x, p: &p }, Field { value: y, p: &p });
+        let ec = Curve::get_elliptic_cuve(&p, &a, &b);
+        let ecdsa = Curve::get_ecdsa(&ec, &generator, &order);
+
+        // modifiied from the order n
+        let priv_key = BigUint::parse_bytes(b"FFFFF0000FFF0F0F0F0F0F0F0F0F0F0EBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
+            .expect("Cannot parse into interger");
+        let pub_key = ecdsa.generate_public_key(&priv_key);
+
+        let hash = Field::new(10, &p);
+        let k_random = ecdsa.generate_random_positive_number_less_than(&order);
+
+        let message = "Bob -> 1BTC -> Alice";
+        let hash_ = ecdsa.generate_hash_less_than(message, &ecdsa.order);
+        let hash = BigUint::from(hash_);
+        let signature = ecdsa.sign(&hash, &priv_key, &k_random);
+
+        // let verify_result = ecdsa.verify(&hash, &pub_key, &signature);
+        // println!("hash: {}", hash);
+        // assert!(verify_result);
+
         let (R, S) = signature;
         let R = R + BigUint::from(1u32);
         let R = Futil::power(&R, 1, &ecdsa.order);
