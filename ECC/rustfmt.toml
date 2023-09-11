@@ -14,7 +14,7 @@ fn_args_layout = "Compressed"
 match_arm_blocks = true
 
 # Delimiter
-# trailing_comma = "Vertical"
+trailing_comma = "Vertical"
 trailing_semicolon = true
 match_block_trailing_comma = false
 binop_separator = "Front"

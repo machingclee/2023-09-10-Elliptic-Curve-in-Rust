@@ -13,8 +13,8 @@ pub enum Point<'a> {
 }
 
 pub struct EllipticCurve<'a> {
-    a: Field<'a>,
-    b: Field<'a>,
+    pub a: Field<'a>,
+    pub b: Field<'a>,
 }
 
 impl<'a> EllipticCurve<'a> {
@@ -30,19 +30,11 @@ impl<'a> EllipticCurve<'a> {
                 if yp.value == BigUint::from(0u32) {
                     return Point::Identity;
                 }
-                let two_times_yp = yp.clone() * BigUint::from(2u32);
-                let s = xp.clone() * xp;
-                let s = s * BigUint::from(3u32);
-                let s = s + &self.a;
-                let s = s.clone() / &two_times_yp;
 
-                let two_times_x = xp.clone() * BigUint::from(2u32);
-                let new_x = s.clone() * &s;
-                let new_x = new_x - &two_times_x;
+                let s = &(&(&(xp * xp) * BigUint::from(3u32)) + &self.a) / &(yp * BigUint::from(2u32));
 
-                let new_y = xp.clone() - &new_x;
-                let new_y = s * &new_y;
-                let new_y = new_y - yp;
+                let new_x = &(&s * &s) - &(xp * BigUint::from(2u32));
+                let new_y = &(&s * &(xp - &new_x)) - yp;
 
                 Point::Coor(new_x, new_y)
             }
@@ -59,34 +51,32 @@ impl<'a> EllipticCurve<'a> {
             (Point::Identity, _) => k.to_owned(),
             (_, Point::Identity) => h.to_owned(),
             (Point::Coor(x1p, y1p), Point::Coor(x2p, y2p)) => {
-                if x1p == x2p && (y1p.clone() + y2p).value == BigUint::from(0u32) {
+                if x1p == x2p && (y1p + y2p).value == BigUint::from(0u32) {
                     return Point::Identity;
                 }
                 // s = (y2-y1)/(x2-x1)
                 // x3 = s^2 - x1 - x2
                 // y3 = s*(x1-x3) - y1
 
-                let s = y2p.clone() - y1p;
-                let x2_minus_x1 = x2p.clone() - x1p;
-                let s = s / &x2_minus_x1;
-                let s_square = s.clone() * &s;
+                let s = &(y2p - y1p) / &(x2p - x1p);
+                let s_square = &s * &s;
 
-                let x3p = s_square - x1p;
-                let x3p = x3p - x2p;
+                let x3p = &s_square - x1p;
+                let x3p = &x3p - x2p;
 
-                let y3p = s * &(x1p.clone() - &x3p);
-                let y3p = y3p - y1p;
+                let y3p = &s * &(x1p - &x3p);
+                let y3p = &y3p - y1p;
 
                 Point::Coor(x3p, y3p)
             }
         }
     }
 
-    pub fn scalar_mul(&'a self, q: &Point<'a>, k: &Field<'a>) -> Point<'a> {
+    pub fn scalar_mul(&'a self, q: &Point<'a>, k: &BigUint) -> Point<'a> {
         let mut t = q.clone();
-        for i in (0..(k.value.bits() - 1)).rev() {
+        for i in (0..(k.bits() - 1)).rev() {
             t = self.double(&t);
-            if k.value.bit(i) {
+            if k.bit(i) {
                 t = self.add(&t, q);
             }
         }
@@ -95,11 +85,10 @@ impl<'a> EllipticCurve<'a> {
 
     fn is_on_curve(&self, point: &Point) -> bool {
         if let Point::Coor(x, y) = point {
-            let y2 = y.clone() * y;
-            let x3 = x.clone() * x;
-            let x3 = x3 * x;
-            let ax = x.clone() * &self.a;
-            y2 == x3 + &ax + &self.b
+            let y2 = y * y;
+            let x3 = &(x * x) * x;
+            let ax = x * &self.a;
+            y2 == &(&x3 + &ax) + &self.b
         } else {
             true
         }
@@ -114,13 +103,13 @@ pub struct Field<'a> {
 impl<'a> Field<'a> {
     pub fn new(i: u32, p: &'a BigUint) -> Self {
         Field {
-            value: BigUint::from(i),
+            value: BigUint::from(i).modpow(&BigUint::from(1u32), &p),
             p,
         }
     }
 }
 
-impl<'a> Add<&Field<'a>> for Field<'a> {
+impl<'a> Add<&Field<'a>> for &Field<'a> {
     type Output = Field<'a>;
 
     fn add(self, rhs: &Field) -> Self::Output {
@@ -129,7 +118,7 @@ impl<'a> Add<&Field<'a>> for Field<'a> {
     }
 }
 
-impl<'a> Sub<&Field<'a>> for Field<'a> {
+impl<'a> Sub<&Field<'a>> for &Field<'a> {
     type Output = Field<'a>;
 
     fn sub(self, rhs: &Field) -> Self::Output {
@@ -141,20 +130,23 @@ impl<'a> Sub<&Field<'a>> for Field<'a> {
         } else {
             value = (self.p + a) - b;
         }
-        Field { value, p: &self.p }
+        Field {
+            value: value.modpow(&BigUint::from(1u32), self.p),
+            p: &self.p,
+        }
     }
 }
 
-impl<'a> Mul<BigUint> for Field<'a> {
+impl<'a> Mul<BigUint> for &Field<'a> {
     type Output = Field<'a>;
     fn mul(self, rhs: BigUint) -> Self::Output {
         let a = &self.value;
         let value = (a * &rhs).modpow(&BigUint::from(1u32), &self.p);
-        return Field { value, p: self.p };
+        Field { value, p: self.p }
     }
 }
 
-impl<'a> Mul<&Field<'a>> for Field<'a> {
+impl<'a> Mul<&Field<'a>> for &Field<'a> {
     type Output = Field<'a>;
 
     fn mul(self, rhs: &Field) -> Self::Output {
@@ -163,7 +155,7 @@ impl<'a> Mul<&Field<'a>> for Field<'a> {
     }
 }
 
-impl<'a> Div<&Field<'a>> for Field<'a> {
+impl<'a> Div<&Field<'a>> for &Field<'a> {
     type Output = Field<'a>;
 
     fn div(self, rhs: &Field) -> Self::Output {
@@ -221,10 +213,7 @@ mod test {
             b: Field::new(2, &p),
         };
         let q = Point::Coor(Field::new(5, &p), Field::new(1, &p));
-        let k = Field {
-            value: BigUint::from(16u32),
-            p: &p,
-        };
+        let k = BigUint::from(16u32);
         let result = ec.scalar_mul(&q, &k);
 
         let expected = Point::Coor(Field::new(10, &p), Field::new(11, &p));
@@ -279,7 +268,6 @@ mod test {
             b: Field { value: b, p: &p },
         };
 
-        let n = Field { value: n, p: &p };
         let result = ec.scalar_mul(&point, &n);
 
         assert_eq!(Point::Identity, result);
